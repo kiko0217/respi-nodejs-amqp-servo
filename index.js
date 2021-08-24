@@ -1,38 +1,16 @@
 const Gpio = require('pigpio').Gpio;
 
 const motor = new Gpio(10, {mode: Gpio.OUTPUT})
+const echo = new Gpio(17, {mode: Gpio.INPUT, alert: true});
 var amqp = require('amqplib/callback_api')
 
-let statusOpenClose = true;
-let pulseWidth = 1800;
+let pulseOpen = 1800;
+let pulseClose = 2200;
+var sttBuah = "jelek";
 
-// const close = setInterval(() => {
-//     motor.servoWrite(pulseWidth);
-//     console.log(pulseWidth)
-//     // clearInterval(close)
-//     if(pulseWidth == 1800) {
-//         pulseWidth = 2500
-//     } else {
-//         pulseWidth = 1800
-        
-//     }
-// }, 3000)
-// close
-const openclose = () => {
-    pulseWidth = 1800
-    motor.servoWrite(pulseWidth);
-    pulseWidth = 2500
-    setTimeout(() =>  {
-        motor.servoWrite(pulseWidth)
-        setTimeout(()=>{
-            statusOpenClose = true
-            console.log('close')
-        },1000)
-        
-    }, 1000)
-    // await close
-}
-amqp.connect('amqp://192.168.0.106', function(error0, connection) {
+motor.servoWrite(pulseClose);
+
+amqp.connect('amqp://192.168.0.112', function(error0, connection) {
     if (error0) {
         throw error0;
     }
@@ -52,18 +30,33 @@ amqp.connect('amqp://192.168.0.106', function(error0, connection) {
         channel.consume(queue, function(msg) {
             const pesan = msg.content.toString()
             console.log(" [x] Received %s", pesan);
-            if(pesan == "tomat jelek") {
-                if(statusOpenClose) {
-                    console.log('open')
-                    statusOpenClose = false
-                    setTimeout(openclose, 500)
-                }
-                
-            }
-
+            sttBuah = pesan
         }, {
             noAck: true
         });
     });
 });
-// close
+
+const watchHCSR04 = () => {
+  let startTick;
+
+  echo.on('alert', (level, tick) => {
+      // console.log(level)
+      // console.log(tick >> 0)
+    if (level == 1) {
+      // startTick = tick
+      if(sttBuah == "jelek"){
+        motor.servoWrite(pulseOpen);
+      }else {
+        motor.servoWrite(pulseClose);
+      }
+    //   startTick = tick;
+    } else {
+      // const endTick = tick;
+      // const diff = (endTick >> 0) - (startTick >> 0); // Unsigned 32 bit arithmetic
+      // console.log("diff = "+diff)
+    //   console.log(diff / 2 / MICROSECDONDS_PER_CM);
+    }
+  });
+};
+watchHCSR04()
